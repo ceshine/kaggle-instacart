@@ -1,0 +1,15 @@
+.Rproj.user
+.Rhistory
+.RData
+.Ruserdata
+*.csv
+*#
+*~
+cache
+__pycache__
+.dir-locals.el
+.idea/
+.ipynb_checkpoints/
+.7z
+*.state
+data/users/*
