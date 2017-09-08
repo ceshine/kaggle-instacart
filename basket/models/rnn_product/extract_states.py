@@ -3,7 +3,8 @@ import torch
 import pandas as pd
 import numpy as np
 
-from .model import get_model
+from .model import get_model as rnn_cnn
+from .bmm_model import get_model as rnn_bmm
 from .data_loader import InstacartDataLoader
 from ..utils import load_user_list
 
@@ -41,10 +42,13 @@ def extract(model, user_list, has_labels=False):
     return np.concatenate(preds, axis=0)
 
 
-def main():
+def main(bmm=False):
+    if bmm:
+        model = rnn_bmm()
+    else:
+        model = rnn_cnn()
     train_users, test_users = load_user_list(train_sample_ratio=1.)
-    model = get_model()
-    model.load_state_dict(torch.load("cache/best_model.state"))
+    model.load_state_dict(torch.load("cache/best_model_rnn_product.state"))
     model.eval()
     val_features, val_labels = extract(model, train_users, has_labels=True)
     df_val = pd.DataFrame(
@@ -57,7 +61,7 @@ def main():
     for col in ("user_id", "product"):
         df_val[col] = df_val[col].astype(np.int32)
     df_val["y"] = df_val["y"].astype(np.int8)
-    joblib.dump(df_val, "cache/rnn_product_fc_val.pkl")
+    joblib.dump(df_val, "cache/rnn_product_fc_{}_val.pkl".format(bmm))
     del df_val, val_features, val_labels
     test_features = extract(model, test_users, has_labels=False)
     df_test = pd.DataFrame(
@@ -68,7 +72,7 @@ def main():
     )
     for col in ("user_id", "product"):
         df_test[col] = df_test[col].astype(np.int32)
-    joblib.dump(df_test, "cache/rnn_product_fc_test.pkl")
+    joblib.dump(df_test, "cache/rnn_product_fc_{}_test.pkl".format(bmm))
 
 
 if __name__ == "__main__":

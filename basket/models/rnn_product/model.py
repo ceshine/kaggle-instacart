@@ -308,14 +308,12 @@ def get_model():
     ).cuda()
 
 
-def base_model(predict=True):
+def base_model(model, train_loops, batch_size=256, predict=True, model_name="rnn_product"):
     train_users, test_users = load_user_list(train_sample_ratio=1.)
     eval_losses = []
     losses_avg = []
-    batch_size = 256
-    model = get_model()
     best_val = None
-    for n_epoch, lr, max_lookback in ((3, 0.001, 3), (3, 0.0005, 1)):
+    for n_epoch, lr, max_lookback in train_loops:
         print("MAX_LOOKBACK: {}  LEARNING_RATE: {}".format(max_lookback, lr))
         optimizer = torch.optim.Adam(model.parameters(), lr=lr)
         for e in range(n_epoch):
@@ -324,13 +322,15 @@ def base_model(predict=True):
                 model, optimizer, [], train_users, test_users, batch_size, max_lookback=max_lookback
             )
             local_eval_losses, eval_score, val_data = process_eval_dataset(
-                model, train_users, batch_size=1024
+                model, train_users, batch_size=2048
             )
             eval_losses.append(np.mean(local_eval_losses))
+            print(val_data["prob"].describe())
             if len(eval_losses) == 1 or eval_losses[-1] < np.min(eval_losses[:-1]):
                 print("Saving model...")
                 # save the best model
-                torch.save(model.state_dict(), "cache/best_model.state")
+                torch.save(model.state_dict(),
+                           "cache/best_model_{}.state".format(model_name))
                 best_val = val_data
             local_train_losses = np.array(
                 [z.cpu().numpy()[0] for z in local_train_losses])
@@ -341,7 +341,8 @@ def base_model(predict=True):
                       e, np.mean(local_train_losses), eval_losses[-1],
                       eval_score))
     if predict:
-        model.load_state_dict(torch.load("cache/best_model.state"))
+        model.load_state_dict(
+            torch.load("cache/best_model_{}.state".format(model_name)))
         test_data = process_test_dataset(model, test_users, batch_size=1024)
         return best_val, test_data
 
@@ -350,6 +351,9 @@ def main(seed=888):
     torch.manual_seed(seed)
     torch.cuda.manual_seed(seed)
     np.random.seed(seed)
-    df_val, df_test_new = base_model(True)
+    df_val, df_test_new = base_model(
+        model=get_model(), train_loops=((3, 0.001, 3), (3, 0.0005, 1)),
+        batch_size=256, predict=True
+    )
     joblib.dump([df_val, df_test_new], "cache/rnn_product.pkl")
     print("F1 score:", evaluate_f1score(df_val, .2))

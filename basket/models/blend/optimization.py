@@ -142,9 +142,9 @@ def create_submission(test_pred, *, filename="sub_new.csv"):
     products[["order_id", "products"]].to_csv(filename, index=False)
 
 
-def main():
+def main(model_name="gbm_preds"):
     pd.set_option('display.float_format', lambda x: '%.4f' % x)
-    val_data, test_data = joblib.load("cache/gbm_preds.pkl")
+    val_data, test_data = joblib.load("cache/{}.pkl".format(model_name))
     val_data = val_data.reset_index(drop=True)
     score = evaluate(val_data)
     print("CV score:", score)

@@ -15,7 +15,7 @@ N_THREAD = 4
 
 
 def train(seed):
-    train_data = joblib.load("cache/rnn_product_fc_val.pkl")
+    train_data = joblib.load("cache/fc_val.pkl")
     y = train_data["y"].values
     feature_names = [x for x in train_data.columns if x.startswith("f_")]
     gc.collect()
@@ -26,13 +26,13 @@ def train(seed):
         'boosting_type': 'gbdt',
         "objective": "binary",
         'metric': "binary_logloss",
-        "bagging_fraction": 0.9,
+        "bagging_fraction": 0.8,
         "bagging_seed": seed,
         "bagging_freq": 1,
-        "feature_fraction": .9,
+        "feature_fraction": .8,
         "feature_fraction_seed": seed,
-        "max_depth": 4,
-        "learning_rate": 0.05,
+        "max_depth": 6,
+        "learning_rate": 0.03,
         "verbose": 0,
         "num_threads": N_THREAD,
         # 'num_leaves': 32,
@@ -47,7 +47,7 @@ def train(seed):
     df_val_global = []
     df_test_global = None
     for train_idx, test_idx in gen:
-        train_data = joblib.load("cache/rnn_product_fc_val.pkl")
+        train_data = joblib.load("cache/fc_val.pkl")
         dtrain = lgb.Dataset(
             train_data.iloc[train_idx].loc[:, feature_names].values,
             label=y[train_idx], feature_name=feature_names)
@@ -70,7 +70,7 @@ def train(seed):
         del dtrain, dval
         gc.collect()
 
-        train_data = joblib.load("cache/rnn_product_fc_val.pkl")
+        train_data = joblib.load("cache/fc_val.pkl")
         val_data = train_data.iloc[test_idx].copy()
         del train_data
         gc.collect()
@@ -85,7 +85,7 @@ def train(seed):
         del val_data
         gc.collect()
 
-        test_data = joblib.load("cache/rnn_product_fc_test.pkl")
+        test_data = joblib.load("cache/fc_test.pkl")
         df_test = test_data[["user_id", "product"]].copy()
         df_test["prob"] = bst.predict(
             test_data[feature_names].values, num_iteration=bst.best_iteration
